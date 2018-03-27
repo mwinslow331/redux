@@ -2,6 +2,7 @@
 <html>
 <head>
   <title>Todos and Goals</title>
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/redux/3.7.2/redux.min.js'></script>
 </head>
 <body>
   <div>
@@ -17,58 +18,10 @@
     <ul id='goals'></ul>
   </div>
   <script type="text/javascript">
-  // The store should have 4 parts
-  // 1. The state
-  // 2. Get the state (getState)
-  // 3. Listen to changes on the state (subscribe)
-  // 4. Update the state (dispatch)
+
   function generateId () {
     return Math.random().toString(36).substring(2) + (new Date()).getTime().toString(36);
   }
-
-  //Library Code
-    function createStore (reducer) {
-      let state
-      let listeners = []
-
-      const getState = () => state
-
-      const subscribe = (listener) => {
-        listeners.push(listener)
-        return () => {
-          listeners = listeners.filter((l) => l !== listener)
-        }
-      }
-
-      const dispatch = (action) => {
-        // call todos
-        state = reducer(state, action)
-        // loop over listeners and invoke item
-        listeners.forEach((listener) => listener())
-      }
-
-      return {
-        getState,
-        subscribe,
-        dispatch,
-      }
-    }
-
-    // This is the way I would most likely code this but the code below is more concise
-    // The below uses "switch" instead of the if/else if/else
-
-    // if (action.type === 'ADD_TODO') {
-    //   return state.concat([action.todo])
-    // } else if (action.type === 'REMOVE_TODO') {
-    //   return state.filter((todo) => todo.id !== action.id)
-    // } else if (action.type === 'TOGGLE_TODO') {
-    //   return state.map((todo) => todo.id !== action.id ? todo :
-    //     Object.assign({}, todo, {complete: !todo.complete})
-    //   )
-    // } else{
-    //
-    //   return state
-    // }
 
     // App Code
     const ADD_TODO = 'ADD_TODO';
@@ -112,6 +65,33 @@
       }
     }
 
+    const checker = (store) => (next) => (action) => {
+      if (
+        action.type === ADD_TODO &&
+        action.todo.name.toLowerCase().indexOf('bitcoin') !== -1
+      ) {
+        return alert("Do not continue to add this item!")
+      }
+
+      if (
+        action.type === ADD_GOAL &&
+        action.goal.name.toLowerCase().indexOf('bitcoin') !== -1
+      ) {
+        return alert("Do not continue to add this goal!")
+      }
+
+      return next(action)
+    }
+
+    const logger = (store) => (next) => (action) => {
+      console.group(action.type)
+      console.log('The action: ', action)
+      const result = next(action)
+      console.log('The new state is: ', store.getState())
+      console.groupEnd()
+      return result
+    }
+
     // Reducer function
     function todos (state = [], action) {
       switch(action.type){
@@ -139,14 +119,10 @@
       }
     }
 
-    function app (state = {}, action) {
-      return {
-        todos: todos(state.todos, action),
-        goals: goals(state.goals, action)
-      }
-    }
-
-    const store = createStore(app)
+    const store = Redux.createStore(Redux.combineReducers({
+      todos,
+      goals,
+    }), Redux.applyMiddleware(checker, logger))
 
     store.subscribe(() => {
       const { goals, todos } = store.getState()
